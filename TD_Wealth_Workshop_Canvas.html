@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TD Wealth — Workshop Canvas</title>
+<script>
+  (function() {
+    var PASSWORD = 'tdwealth2026';
+    var SESSION_KEY = 'tdws_auth';
+    if (sessionStorage.getItem(SESSION_KEY) !== 'ok') {
+      var attempt = window.prompt('TD Wealth Workshop — Enter access code:');
+      if (attempt !== PASSWORD) {
+        window.addEventListener('DOMContentLoaded', function() {
+          while (document.body.firstChild) { document.body.removeChild(document.body.firstChild); }
+          document.body.style.cssText = 'font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#1B2A4A;color:#fff;font-size:16px;';
+          var msg = document.createElement('p');
+          msg.textContent = 'Access denied. Please reload and try again.';
+          document.body.appendChild(msg);
+        });
+        throw new Error('Access denied');
+      }
+      sessionStorage.setItem(SESSION_KEY, 'ok');
+    }
+  })();
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #F2F4F2;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .app-header {
+    background: #1B2A4A;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    flex-shrink: 0;
+    border-bottom: 3px solid #2D7A3A;
+  }
+  .app-logo { height: 26px; }
+  .app-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.15); flex-shrink:0; }
+  .app-title { font-size: 14px; font-weight: 700; color: #FFFFFF; }
+  .app-title-accent { color: #4CAF6E; }
+  .app-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.35); }
+  .save-indicator {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.06em; transition: color 0.3s;
+  }
+  .save-indicator.saved { color: #4CAF6E; }
+  .save-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(255,255,255,0.2); transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .save-indicator.saved .save-dot { background: #4CAF6E; }
+
+  .main-tabs {
+    background: #FFFFFF;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 6px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #E2E8F0;
+  }
+  .main-tab {
+    padding: 7px 20px; font-size: 13px; font-weight: 600;
+    color: #718096; border-radius: 6px; cursor: pointer;
+    border: none; background: transparent;
+    font-family: 'Inter', sans-serif; transition: all 0.15s;
+  }
+  .main-tab.active { background: #1B2A4A; color: #FFFFFF; }
+  .main-tab:hover:not(.active) { background: #F7FAFC; color: #1B2A4A; }
+  .fullscreen-btn {
+    margin-left: auto; padding: 5px 14px; font-size: 10px; font-weight: 600;
+    border-radius: 6px; cursor: pointer; border: 1px solid #E2E8F0;
+    background: #F7FAFC; color: #4A5568; font-family: 'Inter', sans-serif; transition: all 0.15s;
+  }
+  .fullscreen-btn:hover { background: #EDF2F7; }
+
+  .lob-tabs {
+    background: #F7FAFC;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 4px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #E2E8F0;
+    overflow-x: auto;
+  }
+  .lob-tabs::-webkit-scrollbar { height: 0; }
+  .lob-tab {
+    padding: 5px 14px; font-size: 11px; font-weight: 600;
+    color: #718096; border-radius: 20px; cursor: pointer;
+    white-space: nowrap; border: none; background: transparent;
+    font-family: 'Inter', sans-serif; letter-spacing: 0.02em;
+    text-transform: uppercase; transition: all 0.15s;
+  }
+  .lob-tab.active { background: #2D7A3A; color: #FFFFFF; }
+  .lob-tab:hover:not(.active) { background: #E8F5EC; color: #2D7A3A; }
+
+  .content { flex: 1; overflow: hidden; position: relative; }
+  .panel { display: none; width: 100%; height: 100%; flex-direction: column; }
+  .panel.active { display: flex; }
+
+  .toolbar {
+    background: #FFFFFF;
+    padding: 7px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #E2E8F0;
+    flex-shrink: 0;
+  }
+  .toolbar-label { font-size: 10px; font-weight: 600; color: #A0AEC0; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+  .toolbar-divider { width: 1px; height: 20px; background: #E2E8F0; flex-shrink: 0; }
+  .toolbar-hint { font-size: 10px; color: #CBD5E0; font-style: italic; }
+  .toolbar-btn {
+    padding: 4px 12px; font-size: 10px; font-weight: 600;
+    border-radius: 4px; cursor: pointer; border: 1px solid #E2E8F0;
+    background: #F7FAFC; color: #4A5568; font-family: 'Inter', sans-serif;
+    white-space: nowrap; transition: all 0.15s;
+  }
+  .toolbar-btn:hover { background: #EDF2F7; }
+  .toolbar-btn.danger:hover { background: #FFF5F5; border-color: #FC8181; color: #E53E3E; }
+
+  .color-swatches { display: flex; gap: 5px; }
+  .color-swatch {
+    width: 18px; height: 18px; border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent; transition: transform 0.1s, border-color 0.1s;
+  }
+  .color-swatch.selected { border-color: #1B2A4A; transform: scale(1.2); }
+  .color-swatch:hover:not(.selected) { transform: scale(1.1); }
+
+  /* Persona */
+  .persona-switcher {
+    background: #F7FAFC; padding: 8px 20px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #E2E8F0; flex-shrink: 0;
+  }
+  .persona-sw-btn {
+    padding: 5px 18px; font-size: 12px; font-weight: 600;
+    border-radius: 20px; cursor: pointer; border: 1.5px solid #E2E8F0;
+    background: transparent; color: #718096; font-family: 'Inter', sans-serif; transition: all 0.15s;
+  }
+  .persona-sw-btn.active { background: #1B2A4A; color: #FFFFFF; border-color: #1B2A4A; }
+  .persona-sw-btn:hover:not(.active) { background: #EDF2F7; color: #1B2A4A; }
+
+  .persona-scroll { flex: 1; overflow: auto; }
+
+  .pq-note { border-radius: 3px; padding: 7px 9px; box-shadow: 1px 2px 5px rgba(0,0,0,0.1); width: 100%; display: flex; flex-direction: column; gap: 2px; }
+  .pq-note-text { background: transparent; border: none; outline: none; font-family: 'Inter', sans-serif; font-size: 11px; line-height: 1.5; color: rgba(0,0,0,0.72); resize: none; width: 100%; min-height: 60px; }
+  .pq-note-del { align-self: flex-end; font-size: 11px; color: rgba(0,0,0,0.2); cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s; line-height: 1; }
+  .pq-note:hover .pq-note-del { opacity: 1; }
+  .pq-note-del:hover { color: rgba(200,0,0,0.65) !important; }
+  .pq-add-note { margin-top: 6px; padding: 3px 8px; font-size: 10px; color: #A0AEC0; border: 1px dashed #CBD5E0; border-radius: 3px; background: transparent; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s; display: block; width: 100%; text-align: center; }
+  .pq-add-note:hover { background: #F0FFF4; border-color: #2D7A3A; color: #2D7A3A; }
+  .persona-view { display: none; }
+  .persona-view.active { display: block; }
+
+  .persona-quads-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    min-width: 960px;
+  }
+  .persona-quad {
+    display: flex; flex-direction: column;
+    border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;
+    min-height: 300px;
+  }
+  .persona-quad:nth-child(3n) { border-right: none; }
+  .persona-quad-header {
+    background: #1B2A4A; padding: 11px 16px; flex-shrink: 0;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.9);
+  }
+  .persona-quad-body {
+    flex: 1; padding: 10px;
+    background-image: radial-gradient(circle, #E2E8F0 1px, transparent 1px);
+    background-size: 24px 24px; background-color: #FAFAFA;
+  }
+  .persona-quad-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: flex-start; min-height: 160px; }
+
+  /* Blueprint */
+  .blueprint-wrap { flex: 1; overflow: auto; position: relative; }
+  .bp-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #A0AEC0; padding: 60px; }
+  .bp-empty-icon { font-size: 44px; opacity: 0.35; }
+  .bp-empty-text { font-size: 15px; font-weight: 700; }
+  .bp-empty-sub { font-size: 12px; text-align: center; max-width: 320px; line-height: 1.7; }
+
+  .bp-grid { display: grid; min-width: max-content; }
+  .bp-corner { position: sticky; left: 0; top: 0; z-index: 20; background: #1B2A4A; min-width: 150px; border-bottom: 1px solid rgba(255,255,255,0.06); border-right: 1px solid rgba(255,255,255,0.06); }
+  .bp-phase-header { position: sticky; top: 0; z-index: 5; background: #2D7A3A; min-width: 320px; border-left: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .bp-phase-inner { display: flex; align-items: center; padding: 10px 14px; gap: 8px; }
+  .bp-phase-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+    color: #FFFFFF; letter-spacing: 0.06em; text-transform: uppercase; min-width: 0;
+  }
+  .bp-phase-input::placeholder { color: rgba(255,255,255,0.35); }
+  .bp-phase-del { font-size: 13px; color: rgba(255,255,255,0.3); cursor: pointer; flex-shrink: 0; transition: color 0.15s; line-height: 1; }
+  .bp-phase-del:hover { color: #FFFFFF; }
+  .bp-row-label {
+    position: sticky; left: 0; z-index: 10;
+    background: #1B2A4A; color: rgba(255,255,255,0.85);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06); border-right: 1px solid rgba(255,255,255,0.06);
+    min-width: 160px; min-height: 180px; display: flex; align-items: flex-start; line-height: 1.4;
+  }
+  .bp-cell { background: #FFFFFF; border-left: 1px solid #E8EDF0; border-bottom: 1px solid #E8EDF0; padding: 10px; min-width: 320px; min-height: 180px; vertical-align: top; }
+  .bp-cell.alt { background: #F7FAFC; }
+  .bp-cell:hover { background: #FAFFFE; }
+  .bp-cell.alt:hover { background: #F0FAF4; }
+  .bp-cell-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 120px; align-content: flex-start; }
+  .bp-note { border-radius: 3px; padding: 7px 9px; box-shadow: 1px 2px 5px rgba(0,0,0,0.1); width: 100%; display: flex; flex-direction: column; gap: 2px; position: relative; }
+  .bp-note-text { background: transparent; border: none; outline: none; font-family: 'Inter', sans-serif; font-size: 11px; line-height: 1.5; color: rgba(0,0,0,0.72); resize: none; width: 100%; min-height: 60px; }
+  .bp-note-del { align-self: flex-end; font-size: 11px; color: rgba(0,0,0,0.2); cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s; line-height: 1; }
+  .bp-note:hover .bp-note-del { opacity: 1; }
+  .bp-note-del:hover { color: rgba(200,0,0,0.65) !important; }
+  .bp-add-note { margin-top: 5px; padding: 3px 8px; font-size: 10px; color: #A0AEC0; border: 1px dashed #CBD5E0; border-radius: 3px; background: transparent; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s; display: block; width: 100%; text-align: center; }
+  .bp-add-note:hover { background: #F0FFF4; border-color: #2D7A3A; color: #2D7A3A; }
+  .bp-add-phase { padding: 5px 14px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; border: 1.5px solid #2D7A3A; background: #FFFFFF; color: #2D7A3A; font-family: 'Inter', sans-serif; transition: all 0.15s; }
+  .bp-add-phase:hover { background: #2D7A3A; color: #FFFFFF; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <img class="app-logo" src="TD Logo.png" alt="TD">
+  <div class="app-divider"></div>
+  <div class="app-title">TD Wealth <span class="app-title-accent">Workshop Canvas</span></div>
+  <div class="app-badge">Strategic Assessment · v3</div>
+  <div class="save-indicator" id="save-indicator">
+    <div class="save-dot"></div>
+    <span id="save-label">All changes saved</span>
+  </div>
+</div>
+
+<div class="main-tabs">
+  <button class="main-tab active" data-main="persona">1.1 Persona Building</button>
+  <button class="main-tab" data-main="blueprint">1.2 Lifecycle Blueprint</button>
+  <button class="fullscreen-btn" id="fs-btn">⛶ Fullscreen</button>
+</div>
+
+<div class="lob-tabs" id="lob-tabs"></div>
+
+<div class="content" id="content"></div>
+
+<script>
+var LOBS = [
+  { id:'fp',     name:'Financial Planning',  personas:['Financial Planner','CSA / CRA / BO Support'],          roles:['advisor','support'] },
+  { id:'pb',     name:'Private Banking',     personas:['Private Banker','Private Client Service Associate'],   roles:['advisor','support'] },
+  { id:'pt',     name:'Private Trust',       personas:['Advisor'],                                            roles:['advisor'] },
+  { id:'pia',    name:'PIA',                 personas:['Investment Advisor','Associate Investment Advisor'],   roles:['advisor','support'] },
+  { id:'tdam_r', name:'TDAM Retail',         personas:['Wholesaler / BDM / RM'],                              roles:['advisor'] },
+  { id:'tdam_i', name:'TDAM Institution',    personas:['Relationship Manager'],                               roles:['advisor'] },
+  { id:'di_cc',  name:'DI Contact Centre',   personas:['Investment Representative'],                          roles:['advisor'] },
+  { id:'wops',   name:'Wealth Ops',          personas:['Operations Specialist'],                              roles:['central'] }
+];
+
+var BP_ROWS = [
+  { id:'actions',  label:'Actions' },
+  { id:'motiv',    label:'Motivation' },
+  { id:'data',     label:'Data | Insight Necessary' },
+  { id:'tools',    label:'Tools Utilized' },
+  { id:'handoffs', label:'Hand Offs' },
+  { id:'pain',     label:'Pain Points' },
+  { id:'opps',     label:'Opportunities' }
+];
+
+var COLORS = ['#FFE566','#FFB3C6','#74B9FF','#FFA07A','#FF7675','#A29BFE','#55EFC4','#FFEAA7'];
+var ROLE_COLORS = { advisor: '#FFE566', support: '#FFB3C6', central: '#74B9FF' };
+
+var activeMain = 'persona';
+var activeLob  = 'fp';
+var lobSwatches = {};
+
+function skey(section, lob, extra) {
+  return 'tdws::v3::' + section + '::' + lob + (extra !== undefined ? '::' + extra : '');
+}
+var saveTimer;
+function saveData(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {}
+  var ind = document.getElementById('save-indicator');
+  var lbl = document.getElementById('save-label');
+  if (!ind) return;
+  ind.classList.add('saved');
+  lbl.textContent = 'Saved';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function() {
+    ind.classList.remove('saved');
+    lbl.textContent = 'All changes saved';
+  }, 2000);
+}
+function loadData(k, fb) { try { var r = JSON.parse(localStorage.getItem(k)); return r !== null ? r : fb; } catch(e) { return fb; } }
+
+function mkEl(tag, cls) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+function shade(hex, amt) {
+  var h = hex.replace('#','');
+  if (h.length !== 6) return hex;
+  function cl(v) { return Math.max(0, Math.min(255, v)); }
+  var r = cl(parseInt(h.slice(0,2),16) + amt);
+  var g = cl(parseInt(h.slice(2,4),16) + amt);
+  var b = cl(parseInt(h.slice(4,6),16) + amt);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+/* ── LOB TABS ─────────────────────────────────────────────── */
+function buildLobTabs() {
+  var wrap = document.getElementById('lob-tabs');
+  LOBS.forEach(function(lob) {
+    var btn = mkEl('button','lob-tab');
+    btn.textContent = lob.name;
+    btn.dataset.lob = lob.id;
+    if (lob.id === activeLob) btn.classList.add('active');
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.lob-tab').forEach(function(x){ x.classList.remove('active'); });
+      btn.classList.add('active');
+      activeLob = lob.id;
+      showPanel(activeMain, activeLob);
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+/* ── MAIN TABS ────────────────────────────────────────────── */
+document.querySelectorAll('.main-tab').forEach(function(t) {
+  t.addEventListener('click', function() {
+    document.querySelectorAll('.main-tab').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    activeMain = t.dataset.main;
+    showPanel(activeMain, activeLob);
+  });
+});
+
+document.getElementById('fs-btn').addEventListener('click', function() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(function(){});
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+function showPanel(main, lob) {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  var target = document.querySelector('.panel[data-main="' + main + '"][data-lob="' + lob + '"]');
+  if (target) target.classList.add('active');
+}
+
+/* ── COLOR SWATCHES HELPER ────────────────────────────────── */
+function buildSwatches(containerId) {
+  var wrap = mkEl('div','color-swatches');
+  wrap.id = containerId;
+  COLORS.forEach(function(c, i) {
+    var sw = mkEl('div','color-swatch');
+    if (i === 0) sw.classList.add('selected');
+    sw.dataset.color = c;
+    sw.style.background = c;
+    sw.addEventListener('click', function() {
+      wrap.querySelectorAll('.color-swatch').forEach(function(s){ s.classList.remove('selected'); });
+      sw.classList.add('selected');
+    });
+    wrap.appendChild(sw);
+  });
+  return wrap;
+}
+
+function selectedColor(swatchesEl) {
+  var sel = swatchesEl.querySelector('.color-swatch.selected');
+  return sel ? sel.dataset.color : COLORS[0];
+}
+
+var PQ_QUADS = [
+  { id:'exp',       label:'Experience Expectations' },
+  { id:'rel',       label:'Relationships' },
+  { id:'job',       label:'Job Function' },
+  { id:'client',    label:'Client Base' },
+  { id:'support',   label:'Support Structure' },
+  { id:'day',       label:'Friction Points' },
+  { id:'custom1',   label:'Custom 1' },
+  { id:'custom2',   label:'Custom 2' },
+  { id:'custom3',   label:'Custom 3' }
+];
+
+/* ── PERSONA PANEL ────────────────────────────────────────── */
+function buildPersonaPanel(lob) {
+  var panel = mkEl('div','panel');
+  panel.dataset.main = 'persona';
+  panel.dataset.lob  = lob.id;
+
+  // Toolbar
+  var tb = mkEl('div','toolbar');
+  var colorLbl = mkEl('span','toolbar-label');
+  colorLbl.textContent = 'Note Color';
+  var swatches = buildSwatches('ps-sw-' + lob.id);
+  var div1 = mkEl('div','toolbar-divider');
+  var clearBtn = mkEl('button','toolbar-btn danger');
+  clearBtn.textContent = 'Clear Persona';
+  clearBtn.id = 'clear-persona-' + lob.id;
+
+  var pLegend = mkEl('div');
+  pLegend.style.cssText = 'display:flex; align-items:center; gap:10px; margin-left:auto;';
+  [
+    { color: ROLE_COLORS.advisor, label: 'Advisor / Relationship Owner' },
+    { color: ROLE_COLORS.support, label: 'Support / Associate' },
+    { color: ROLE_COLORS.central, label: 'Centralized / Cross-Team' }
+  ].forEach(function(item) {
+    var chip = mkEl('div');
+    chip.style.cssText = 'display:flex; align-items:center; gap:5px; font-size:10px; font-weight:600; color:#4A5568;';
+    var dot = mkEl('div');
+    dot.style.cssText = 'width:12px; height:12px; border-radius:3px; background:' + item.color + '; border:1px solid rgba(0,0,0,0.1); flex-shrink:0;';
+    var lbl = mkEl('span');
+    lbl.textContent = item.label;
+    chip.appendChild(dot);
+    chip.appendChild(lbl);
+    pLegend.appendChild(chip);
+  });
+
+  tb.appendChild(colorLbl);
+  tb.appendChild(swatches);
+  tb.appendChild(div1);
+  tb.appendChild(clearBtn);
+  tb.appendChild(pLegend);
+  panel.appendChild(tb);
+
+  // Persona switcher (only if 2+ personas)
+  if (lob.personas.length > 1) {
+    var switcher = mkEl('div','persona-switcher');
+    var swLbl = mkEl('span','toolbar-label');
+    swLbl.textContent = 'Persona';
+    switcher.appendChild(swLbl);
+    lob.personas.forEach(function(name, pi) {
+      var btn = mkEl('button','persona-sw-btn');
+      btn.textContent = name;
+      if (pi === 0) btn.classList.add('active');
+      btn.addEventListener('click', function() {
+        switcher.querySelectorAll('.persona-sw-btn').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        panel.querySelectorAll('.persona-view').forEach(function(v){ v.classList.remove('active'); });
+        document.getElementById('pview-' + lob.id + '-' + pi).classList.add('active');
+      });
+      switcher.appendChild(btn);
+    });
+    panel.appendChild(switcher);
+  }
+
+  // Scroll container
+  var scroll = mkEl('div','persona-scroll');
+
+  lob.personas.forEach(function(name, pi) {
+    var view = mkEl('div','persona-view');
+    view.id = 'pview-' + lob.id + '-' + pi;
+    if (pi === 0) view.classList.add('active');
+    view.appendChild(buildQuadGrid(lob, name, pi, swatches));
+    scroll.appendChild(view);
+  });
+
+  panel.appendChild(scroll);
+
+  // Clear button wired after panel built
+  clearBtn.addEventListener('click', function() {
+    var activeView = panel.querySelector('.persona-view.active');
+    var pi = activeView ? parseInt(activeView.id.split('-').pop()) : 0;
+    var name = lob.personas[pi] || 'this persona';
+    if (!confirm('Clear all notes for ' + name + '?')) return;
+    PQ_QUADS.forEach(function(q) {
+      var el = document.getElementById('pqcell-' + lob.id + '-' + pi + '-' + q.id);
+      if (el) { while(el.firstChild) el.removeChild(el.firstChild); }
+      saveData(skey('persona', lob.id, pi + '-' + q.id), []);
+    });
+  });
+
+  return panel;
+}
+
+function buildQuadGrid(lob, name, pi, swatches) {
+  var grid = mkEl('div','persona-quads-grid');
+  PQ_QUADS.forEach(function(q) {
+    var quad = mkEl('div','persona-quad');
+
+    var hdr = mkEl('div','persona-quad-header');
+    var hdrInput = mkEl('input');
+    hdrInput.value = loadData(skey('pqlabel', lob.id + '-' + pi, q.id), q.label);
+    hdrInput.style.cssText = 'background:transparent; border:none; outline:none; font-family:Inter,sans-serif; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.9); width:100%; cursor:text;';
+    hdrInput.addEventListener('change', function() {
+      saveData(skey('pqlabel', lob.id + '-' + pi, q.id), hdrInput.value);
+    });
+    hdr.appendChild(hdrInput);
+    quad.appendChild(hdr);
+
+    var body = mkEl('div','persona-quad-body');
+    var notes = mkEl('div','persona-quad-notes');
+    notes.id = 'pqcell-' + lob.id + '-' + pi + '-' + q.id;
+
+    var saved = loadData(skey('persona', lob.id, pi + '-' + q.id), []);
+    saved.forEach(function(n) { notes.appendChild(buildPqNote(lob.id, pi, q.id, n, swatches)); });
+
+    var addBtn = mkEl('button','pq-add-note');
+    addBtn.textContent = '+ note';
+    (function(capturedQid) {
+      addBtn.addEventListener('click', function() {
+        var color = selectedColor(swatches);
+        var nid   = 'n' + Date.now() + Math.random().toString(36).slice(2,4);
+        var noteData = { id: nid, color: color, text: '' };
+        notes.appendChild(buildPqNote(lob.id, pi, capturedQid, noteData, swatches));
+        savePqCell(lob.id, pi, capturedQid, notes);
+        var ta = notes.lastElementChild && notes.lastElementChild.querySelector('textarea');
+        if (ta) ta.focus();
+      });
+    })(q.id);
+
+    body.appendChild(notes);
+    body.appendChild(addBtn);
+    quad.appendChild(body);
+    grid.appendChild(quad);
+  });
+  return grid;
+}
+
+function buildPqNote(lobId, pi, qid, data, swatches) {
+  var n = mkEl('div','pq-note');
+  n.dataset.id   = data.id;
+  n.style.background = data.color;
+
+  var ta = mkEl('textarea','pq-note-text');
+  ta.value       = data.text;
+  ta.placeholder = 'Note…';
+  ta.addEventListener('input', function() {
+    var container = document.getElementById('pqcell-' + lobId + '-' + pi + '-' + qid);
+    savePqCell(lobId, pi, qid, container);
+  });
+
+  var del = mkEl('span','pq-note-del');
+  del.textContent = '✕';
+  del.addEventListener('click', function() {
+    n.remove();
+    var container = document.getElementById('pqcell-' + lobId + '-' + pi + '-' + qid);
+    savePqCell(lobId, pi, qid, container);
+  });
+
+  n.appendChild(ta);
+  n.appendChild(del);
+  return n;
+}
+
+function savePqCell(lobId, pi, qid, container) {
+  if (!container) return;
+  var data = [];
+  container.querySelectorAll('.pq-note').forEach(function(n) {
+    data.push({ id: n.dataset.id, color: n.style.background, text: n.querySelector('textarea').value });
+  });
+  saveData(skey('persona', lobId, pi + '-' + qid), data);
+}
+
+function makeDraggable(el, handle, onDone) {
+  handle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    var ox = e.clientX - (parseInt(el.style.left)||0);
+    var oy = e.clientY - (parseInt(el.style.top) ||0);
+    el.classList.add('dragging');
+    function move(e) {
+      el.style.left = Math.max(0, e.clientX - ox) + 'px';
+      el.style.top  = Math.max(0, e.clientY - oy) + 'px';
+    }
+    function up() {
+      el.classList.remove('dragging');
+      if (onDone) onDone();
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    }
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+}
+
+/* ── BLUEPRINT PANEL ──────────────────────────────────────── */
+function buildBlueprintPanel(lob) {
+  var panel = mkEl('div','panel');
+  panel.dataset.main = 'blueprint';
+  panel.dataset.lob  = lob.id;
+
+  var tb = mkEl('div','toolbar');
+
+  var addPhBtn = mkEl('button','bp-add-phase');
+  addPhBtn.textContent = '+ Add Phase';
+
+  var div1 = mkEl('div','toolbar-divider');
+  var colorLbl = mkEl('span','toolbar-label');
+  colorLbl.textContent = 'Note Color';
+  var swatches = buildSwatches('bp-sw-' + lob.id);
+  var div2 = mkEl('div','toolbar-divider');
+
+  var lobLbl = mkEl('span');
+  lobLbl.style.cssText = 'font-size:11px; font-weight:600; color:#4A5568;';
+  lobLbl.textContent = lob.name;
+
+  var clearBtn = mkEl('button','toolbar-btn danger');
+  clearBtn.style.marginLeft = '6px';
+  clearBtn.textContent = 'Clear All';
+
+  clearBtn.addEventListener('click', function() {
+    if (!confirm('Clear all phases and notes for ' + lob.name + '?')) return;
+    saveData(skey('blueprint', lob.id), {phases:[], cells:{}});
+    renderGrid(lob.id, swatches);
+  });
+
+  addPhBtn.addEventListener('click', function() {
+    var d = loadData(skey('blueprint', lob.id), {phases:[], cells:{}});
+    d.phases.push('');
+    saveData(skey('blueprint', lob.id), d);
+    renderGrid(lob.id, swatches);
+    var wrap = document.getElementById('bp-wrap-' + lob.id);
+    if (wrap) {
+      var inputs = wrap.querySelectorAll('.bp-phase-input');
+      if (inputs.length) inputs[inputs.length-1].focus();
+    }
+  });
+
+  var legend = mkEl('div');
+  legend.style.cssText = 'display:flex; align-items:center; gap:10px; margin-left:auto;';
+  [
+    { color: ROLE_COLORS.advisor,  label: 'Advisor / Relationship Owner' },
+    { color: ROLE_COLORS.support,  label: 'Support / Associate' },
+    { color: ROLE_COLORS.central,  label: 'Centralized / Cross-Team' }
+  ].forEach(function(item) {
+    var chip = mkEl('div');
+    chip.style.cssText = 'display:flex; align-items:center; gap:5px; font-size:10px; font-weight:600; color:#4A5568;';
+    var dot = mkEl('div');
+    dot.style.cssText = 'width:12px; height:12px; border-radius:3px; background:' + item.color + '; border:1px solid rgba(0,0,0,0.1); flex-shrink:0;';
+    var lbl = mkEl('span');
+    lbl.textContent = item.label;
+    chip.appendChild(dot);
+    chip.appendChild(lbl);
+    legend.appendChild(chip);
+  });
+
+  tb.appendChild(addPhBtn);
+  tb.appendChild(div1);
+  tb.appendChild(colorLbl);
+  tb.appendChild(swatches);
+  tb.appendChild(div2);
+  tb.appendChild(lobLbl);
+  tb.appendChild(clearBtn);
+  tb.appendChild(legend);
+  panel.appendChild(tb);
+
+  var wrap = mkEl('div','blueprint-wrap');
+  wrap.id = 'bp-wrap-' + lob.id;
+  panel.appendChild(wrap);
+
+  lobSwatches[lob.id] = swatches;
+  return panel;
+}
+
+function renderGrid(lobId, swatches) {
+  var wrap = document.getElementById('bp-wrap-' + lobId);
+  if (!wrap) return;
+  while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+
+  var d = loadData(skey('blueprint', lobId), null);
+  if (!d || !d.phases.length) {
+    d = { phases: ['Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','Phase 6'], cells: {} };
+    saveData(skey('blueprint', lobId), d);
+  }
+  if (!d.phases.length) {
+    var empty = mkEl('div','bp-empty');
+    var ico = mkEl('div','bp-empty-icon');
+    ico.textContent = '🗺️';
+    var etxt = mkEl('div','bp-empty-text');
+    etxt.textContent = 'No phases defined yet';
+    var esub = mkEl('div','bp-empty-sub');
+    esub.textContent = 'Click + Add Phase to define lifecycle stages live during the workshop. The grid grows horizontally as you add phases.';
+    empty.appendChild(ico);
+    empty.appendChild(etxt);
+    empty.appendChild(esub);
+    wrap.appendChild(empty);
+    return;
+  }
+
+  var n = d.phases.length;
+  var grid = mkEl('div','bp-grid');
+  grid.style.gridTemplateColumns = '160px repeat(' + n + ', 320px)';
+
+  /* corner */
+  grid.appendChild(mkEl('div','bp-corner'));
+
+  /* phase headers */
+  d.phases.forEach(function(ph, pi) {
+    var phCell  = mkEl('div','bp-phase-header');
+    var inner   = mkEl('div','bp-phase-inner');
+    var inp     = mkEl('input','bp-phase-input');
+    inp.value       = ph;
+    inp.placeholder = 'Phase name…';
+    inp.addEventListener('change', function() {
+      var d2 = loadData(skey('blueprint', lobId), {phases:[], cells:{}});
+      d2.phases[pi] = inp.value;
+      saveData(skey('blueprint', lobId), d2);
+    });
+    var del = mkEl('span','bp-phase-del');
+    del.textContent = '✕';
+    del.title = 'Remove phase';
+    (function(capturedPi) {
+      del.addEventListener('click', function() {
+        var d2 = loadData(skey('blueprint', lobId), {phases:[], cells:{}});
+        var phaseName = d2.phases[capturedPi] || 'Unnamed';
+        if (!confirm('Remove phase "' + phaseName + '" and all its notes?')) return;
+        d2.phases.splice(capturedPi, 1);
+        BP_ROWS.forEach(function(r) {
+          for (var j = capturedPi; j < d2.phases.length; j++) {
+            d2.cells[r.id + '_' + j] = d2.cells[r.id + '_' + (j+1)] || [];
+          }
+          delete d2.cells[r.id + '_' + d2.phases.length];
+        });
+        saveData(skey('blueprint', lobId), d2);
+        renderGrid(lobId, swatches);
+      });
+    })(pi);
+    inner.appendChild(inp);
+    inner.appendChild(del);
+    phCell.appendChild(inner);
+    grid.appendChild(phCell);
+  });
+
+  /* rows */
+  BP_ROWS.forEach(function(row, ri) {
+    var lbl = mkEl('div','bp-row-label');
+    lbl.textContent = row.label;
+    grid.appendChild(lbl);
+
+    d.phases.forEach(function(_, pi) {
+      var cellKey  = row.id + '_' + pi;
+      var notes    = d.cells[cellKey] || [];
+      var cell     = mkEl('div', ri % 2 === 0 ? 'bp-cell' : 'bp-cell alt');
+
+      var notesDiv = mkEl('div','bp-cell-notes');
+      notesDiv.id  = 'bpcell-' + lobId + '-' + row.id + '-' + pi;
+      notes.forEach(function(n) { notesDiv.appendChild(buildBpNote(lobId, row.id, pi, n)); });
+
+      var addBtn = mkEl('button','bp-add-note');
+      addBtn.textContent = '+ note';
+      (function(capturedRowId, capturedPi) {
+        addBtn.addEventListener('click', function() {
+          var color = selectedColor(swatches);
+          var nid   = 'n' + Date.now() + Math.random().toString(36).slice(2,4);
+          var noteData = { id: nid, color: color, text: '' };
+          notesDiv.appendChild(buildBpNote(lobId, capturedRowId, capturedPi, noteData));
+          saveBpCell(lobId, capturedRowId, capturedPi);
+          var ta = notesDiv.lastElementChild && notesDiv.lastElementChild.querySelector('textarea');
+          if (ta) ta.focus();
+        });
+      })(row.id, pi);
+
+      cell.appendChild(notesDiv);
+      cell.appendChild(addBtn);
+      grid.appendChild(cell);
+    });
+  });
+
+  wrap.appendChild(grid);
+}
+
+function buildBpNote(lobId, rowId, pi, data) {
+  var n = mkEl('div','bp-note');
+  n.dataset.id   = data.id;
+  n.style.background = data.color;
+
+  var ta = mkEl('textarea','bp-note-text');
+  ta.value       = data.text;
+  ta.placeholder = 'Note…';
+  (function(capturedRowId, capturedPi) {
+    ta.addEventListener('input', function() { saveBpCell(lobId, capturedRowId, capturedPi); });
+  })(rowId, pi);
+
+  var del = mkEl('span','bp-note-del');
+  del.textContent = '✕';
+  (function(capturedRowId, capturedPi) {
+    del.addEventListener('click', function() { n.remove(); saveBpCell(lobId, capturedRowId, capturedPi); });
+  })(rowId, pi);
+
+  n.appendChild(ta);
+  n.appendChild(del);
+  return n;
+}
+
+function saveBpCell(lobId, rowId, pi) {
+  var container = document.getElementById('bpcell-' + lobId + '-' + rowId + '-' + pi);
+  if (!container) return;
+  var d = loadData(skey('blueprint', lobId), {phases:[], cells:{}});
+  var cellKey = rowId + '_' + pi;
+  var notes = [];
+  container.querySelectorAll('.bp-note').forEach(function(n) {
+    notes.push({
+      id:    n.dataset.id,
+      color: n.style.background,
+      text:  n.querySelector('textarea').value
+    });
+  });
+  d.cells[cellKey] = notes;
+  saveData(skey('blueprint', lobId), d);
+}
+
+/* ── SEED DATA ────────────────────────────────────────────── */
+var DEFAULT_PHASES = {
+  fp:     ['Discover','Plan','Recommend','Review','Grow'],
+  pb:     ['Discover','Structure','Onboard','Service','Deepen'],
+  pt:     ['Discover','Plan','Structure','Service','Retain'],
+  pia:    ['Understand','Advise','Invest','Review','Deepen'],
+  tdam_r: ['Know Advisor','Prioritize','Engage','Influence','Grow Flows','Deepen Loyalty'],
+  tdam_i: ['Know Institution','Map Stakeholders','Coordinate Expertise','Progress Opportunity','Retain or Expand'],
+  di_cc:  ['Identify','Understand','Assist','Resolve or Escalate','Follow Up'],
+  wops:   ['Receive','Validate','Route','Process','Resolve','Close']
+};
+
+// Each note: { t: 'text', r: 'advisor'|'support'|'central' }
+var BLUEPRINT_SEED = {
+  fp: {
+    actions: {
+      0: [{t:'Discover client goals, needs and household context',r:'advisor'},{t:'Run comprehensive financial discovery conversation',r:'advisor'}],
+      1: [{t:'Build and maintain goal-based financial plan',r:'advisor'},{t:'Document planning assumptions, trade-offs and recommendations',r:'advisor'}],
+      2: [{t:'Translate plan into clear recommendations and coordinated actions',r:'advisor'},{t:'Present and confirm client commitments',r:'advisor'}],
+      3: [{t:'Conduct Annual Client Review (ACR)',r:'advisor'},{t:'Respond to life events — marriage, inheritance, retirement, estate changes',r:'advisor'},{t:'Prep review materials and schedule appointment',r:'support'}],
+      4: [{t:'Manage referrals from retail branch partners',r:'advisor'},{t:'Progress opportunity pipeline; pursue household consolidation',r:'advisor'},{t:'Admin follow-up and pipeline data entry',r:'support'}]
+    },
+    motiv: {
+      0: [{t:'Build trusted, primary planning relationship with client',r:'advisor'}],
+      1: [{t:'Help clients achieve financial confidence and meet life goals',r:'advisor'}],
+      2: [{t:'Deliver advice efficiently; maximize time in front of clients',r:'advisor'},{t:'Keep planner focused on advice, not admin',r:'support'}],
+      3: [{t:'Stay relevant through client life stages; maintain compliance standing',r:'advisor'}],
+      4: [{t:'Grow a scalable, referral-driven practice; acquire and retain households',r:'advisor'}]
+    },
+    pain: {
+      0: [{t:'Salesforce seen as a "Compliance Tool" — admin burden, not a sales enabler',r:'advisor'}],
+      1: [{t:'Manual activity logging — dragging emails into Outlook folders to capture interactions',r:'advisor'}],
+      3: [{t:'Croesus Household Desync — false past-due ACR alerts (1,000+ days) distort compliance scorecards',r:'advisor'},{t:'Review prep is manual and time-consuming for FPA/CSA',r:'support'}],
+      4: [{t:'No consistent referral pipeline visibility or engagement triggers for follow-up',r:'advisor'}]
+    },
+    handoffs: {
+      0: [{t:'Retail branch partner → FP: qualified referral with household context',r:'central'}],
+      2: [{t:'FP → CSA / CRA: onboarding, documentation and follow-up coordination',r:'support'}],
+      3: [{t:'FP → Centralized FPA: review prep, scheduling and admin tasks',r:'central'}],
+      4: [{t:'FP → Retail / Wealth partner: reciprocal referral for banking or specialist needs',r:'advisor'}]
+    },
+    opps: {
+      0: [{t:'Auto-populate household context from Croesus at point of discovery',r:'central'}],
+      3: [{t:'Proactive ACR scheduling driven by reliable household sync',r:'central'},{t:'AI-triggered review prompts based on life events or portfolio changes',r:'central'}],
+      4: [{t:'Dynamic referral pipeline with engagement triggers and conversion tracking',r:'advisor'}]
+    }
+  },
+  pb: {
+    actions: {
+      0: [{t:'Conduct family, business and liquidity discovery',r:'advisor'},{t:'Understand HNW/UHNW banking, credit and cash-management needs',r:'advisor'}],
+      1: [{t:'Structure custom lending, mortgages and cash-management solutions',r:'advisor'},{t:'Engage Regional Credit Managers, Credit Analysts and CSG',r:'advisor'}],
+      2: [{t:'Coordinate end-to-end client onboarding via PCSA and centralized support',r:'advisor'},{t:'eSign packaging, account programming and document storage',r:'support'},{t:'Centralized support: national onboarding processing',r:'central'}],
+      3: [{t:'Deliver premium, responsive service for complex client needs',r:'advisor'},{t:'Bill payments, wire requests and account maintenance',r:'support'}],
+      4: [{t:'Acquire, retain and deepen HNW/UHNW relationships',r:'advisor'},{t:'Expand banking wallet share; connect to Wealth and One TD partners',r:'advisor'}]
+    },
+    motiv: {
+      0: [{t:'Deliver premium, personalized service that simplifies complex financial lives',r:'advisor'}],
+      1: [{t:'Solve complex credit needs; structure the right solution within policy',r:'advisor'}],
+      2: [{t:'Shift admin and processing to PCSA to focus time on client acquisition',r:'advisor'},{t:'Complete servicing accurately so banker can focus on clients',r:'support'}],
+      3: [{t:'Protect the relationship through fast, accurate service delivery',r:'advisor'},{t:'Handle service requests so the banker stays client-facing',r:'support'}],
+      4: [{t:'Grow banking wallet share and deepen the total TD relationship',r:'advisor'}]
+    },
+    pain: {
+      0: [{t:'Upstream Data Delays — PB clients frequently fail to ingest into Salesforce on time, creating visibility gaps',r:'advisor'}],
+      2: [{t:'Siloed Household Tools — standalone PB householding tools create data sync friction with Salesforce',r:'advisor'},{t:'Deficient onboarding requests require manual rework loops between PCSA and front office',r:'support'}]
+    },
+    handoffs: {
+      1: [{t:'PB → Regional Credit Manager / Credit Analyst: structuring and underwriting support',r:'central'}],
+      2: [{t:'PB → PCSA: onboarding, documentation, eSign and account programming',r:'support'},{t:'PCSA → Centralized PB Support Team: national onboarding scope',r:'central'}],
+      4: [{t:'PB → Wealth IA / FP / specialist: broader Wealth relationship introduction',r:'advisor'}]
+    },
+    opps: {
+      0: [{t:'Real-time PB client ingestion from WCM — eliminate visibility gaps at relationship start',r:'central'}],
+      2: [{t:'Task-based onboarding workflow with status, attachments and exception routing',r:'support'}],
+      4: [{t:'Unified HNW household view across banking, credit and Wealth holdings',r:'central'}]
+    }
+  },
+  pia: {
+    actions: {
+      0: [{t:'Conduct discovery — establish client risk profile, investment policy and household context',r:'advisor'},{t:'Understand goals, time horizon and existing portfolio holdings',r:'advisor'}],
+      1: [{t:'Develop bespoke investment or portfolio strategy',r:'advisor'},{t:'Present investment recommendations aligned to risk profile and goals',r:'advisor'}],
+      2: [{t:'Manage discretionary portfolios (formerly PIC) and non-discretionary trading accounts',r:'advisor'},{t:'Execute trades and coordinate account actions',r:'advisor'},{t:'AIA: account opening, transactions and documentation support',r:'support'}],
+      3: [{t:'Execute portfolio reviews, market updates and rebalancing',r:'advisor'},{t:'Identify asset consolidation opportunities',r:'advisor'},{t:'AIA / CSA: appointment prep and post-meeting note consolidation',r:'support'}],
+      4: [{t:'Identify and progress growth, referral and consolidation opportunities',r:'advisor'},{t:'Coordinate Wealth and One TD specialists for complex client needs',r:'advisor'},{t:'Centralized Client Service: standardized admin across advisory practices',r:'central'}]
+    },
+    motiv: {
+      0: [{t:'Deliver better client outcomes through informed, personalized investment advice',r:'advisor'}],
+      1: [{t:'Build a differentiated, high-performing advisory practice',r:'advisor'}],
+      2: [{t:'Increase capacity by reducing swivel-chair activity and fragmented admin',r:'advisor'},{t:'Handle delegated work accurately so the IA stays client-facing',r:'support'}],
+      3: [{t:'Maintain client trust and compliance through disciplined review cadence',r:'advisor'}],
+      4: [{t:'Grow AUM; deepen household wallet share; strengthen referral relationships',r:'advisor'}]
+    },
+    pain: {
+      0: [{t:'Duplicate Merging — new accounts create duplicate records instead of auto-converting prospects; irreversible errors break Wealth Money Movement',r:'advisor'}],
+      2: [{t:'Riva Activity Scoping — sync flattened to Account level; Opportunities, Financial Accounts and Croesus Households do not sync to Outlook',r:'advisor'}],
+      4: [{t:'Referral App Debt — URIA micro-app "customized to the hilt," causing instability across referral workflows',r:'advisor'}]
+    },
+    handoffs: {
+      0: [{t:'Branch or Wealth partner → IA: qualified referral or new client introduction',r:'central'}],
+      2: [{t:'IA → AIA: delegated transactions, documentation and account opening',r:'support'}],
+      3: [{t:'IA → Client Service Support: routine service requests and follow-up',r:'support'}],
+      4: [{t:'IA → Wealth specialist / One TD partner: complex estate, tax or insurance referral',r:'advisor'}]
+    },
+    opps: {
+      0: [{t:'Auto-convert prospect to client on account opening — eliminate duplicate merging',r:'central'}],
+      2: [{t:'Bidirectional Riva sync across Opportunities, Financial Accounts and Households',r:'central'}],
+      4: [{t:'Stable OOTB referral workflow to replace URIA custom micro-app',r:'central'}]
+    }
+  },
+  tdam_r: {
+    actions: {
+      0: [{t:'Build advisor 360 view — understand advisor business, needs and prior interactions',r:'advisor'},{t:'Track territory AUM, product holdings and gross sales',r:'advisor'}],
+      1: [{t:'Execute mandatory call rotations — BDMs ~35 outbound calls/day based on last contact date',r:'advisor'},{t:'Identify and prioritize high-value advisor engagement opportunities',r:'advisor'},{t:'BDA: sales execution and outreach follow-up support',r:'support'}],
+      2: [{t:'Conduct face-to-face advisor meetings and product socialization (RVPs on road)',r:'advisor'},{t:'Execute outreach across internal and external broker-dealer channels',r:'advisor'}],
+      3: [{t:'Position TDAM products, strategies, insights and practice-support ideas',r:'advisor'},{t:'Manage campaigns, events, webinars and follow-up',r:'advisor'},{t:'Marketing: campaign materials and event coordination',r:'central'}],
+      4: [{t:'Track territory gross sales and product holdings',r:'advisor'},{t:'Log and manage advisor entertainment expenses',r:'advisor'},{t:'BDA: post-meeting follow-up and admin support',r:'support'}],
+      5: [{t:'Progress sales opportunities; deepen advisor loyalty and TDAM product penetration',r:'advisor'},{t:'Disciplined territory coverage — avoid selective engagement',r:'advisor'}]
+    },
+    motiv: {
+      0: [{t:'Develop a complete, trustworthy view of each advisor relationship',r:'advisor'}],
+      1: [{t:'Grow net assets; expand the active advisor base',r:'advisor'}],
+      2: [{t:'Improve advisor loyalty through valuable, relevant engagement',r:'advisor'}],
+      3: [{t:'Position TDAM as investment provider of choice to advisors',r:'advisor'}],
+      4: [{t:'Improve sales productivity; reduce pre-call preparation effort',r:'advisor'},{t:'Support BDM / RVP so they can focus on advisor conversations',r:'support'}],
+      5: [{t:'Deepen TDAM share of advisor wallet and product mix',r:'advisor'}]
+    },
+    pain: {
+      0: [{t:'Stale Rep Code Data — updating restricted advisor contact fields requires manual approval requests to central admin',r:'advisor'}],
+      1: [{t:'Lack of Actionable Reasons to Call — call rotation lists lacked dynamic engagement triggers beyond last contact date',r:'advisor'}],
+      4: [{t:'Double-Entry Expense Management — manual recording in Salesforce and re-entry in Coupa',r:'advisor'}]
+    },
+    handoffs: {
+      0: [{t:'National Office / Analytics → Wholesaler: advisor intelligence and territory data',r:'central'}],
+      2: [{t:'Marketing → BDM / RVP: campaign materials, event coordination and personalized outreach',r:'central'}],
+      4: [{t:'BDA → BDM / RVP: sales execution support and follow-up activities',r:'support'}],
+      5: [{t:'BDM → National Office: pipeline reporting and territory performance visibility',r:'central'}]
+    },
+    opps: {
+      1: [{t:'AI-generated engagement triggers — go beyond last contact date to surface advisor intent signals',r:'central'}],
+      2: [{t:'Mobile-optimized pre-call prep and post-meeting logging for RVPs on the road',r:'advisor'}],
+      4: [{t:'Salesforce-to-Coupa expense integration — eliminate dual entry for entertainment',r:'central'}]
+    }
+  },
+  tdam_i: {
+    actions: {
+      0: [{t:'Prospect institutional accounts — pensions, endowments, foundations, corporations',r:'advisor'},{t:'Research institution objectives and investment requirements',r:'advisor'}],
+      1: [{t:'Map complex stakeholder and consultant hierarchies',r:'advisor'},{t:'Identify key decision-makers and investment committee contacts',r:'advisor'},{t:'Associate: stakeholder record maintenance and relationship support',r:'support'}],
+      2: [{t:'Order customized pitch presentations via Salesforce',r:'advisor'},{t:'Coordinate investment, portfolio management and product expertise',r:'advisor'},{t:'Product and Strategy team: solution positioning support',r:'central'}],
+      3: [{t:'Identify, progress and document institutional opportunities',r:'advisor'},{t:'Prepare for meetings; track commitments and follow-up',r:'advisor'},{t:'Associate: event coordination and activity support',r:'support'}],
+      4: [{t:'Manage institutional client onboarding and mandate retention',r:'advisor'},{t:'Support mandate expansion and relationship deepening',r:'advisor'}]
+    },
+    motiv: {
+      0: [{t:'Build a reliable institutional relationship and stakeholder view',r:'advisor'}],
+      1: [{t:'Maintain credible relationships with clients, prospects and consultants',r:'advisor'}],
+      2: [{t:'Bring the right TDAM expertise to the right conversation',r:'advisor'}],
+      3: [{t:'Protect and grow institutional AUM and mandate relationships',r:'advisor'}],
+      4: [{t:'Retain long-term client relationships; expand institutional business',r:'advisor'}]
+    },
+    pain: {
+      0: [{t:'Org Isolation — TDAM Institutional sits on a separate Salesforce org ("TSF") isolated from the primary SFW org',r:'advisor'}],
+      3: [{t:'Analytics Gridlock — CRM Analytics stalled 2.5–3 years; complex data sourcing blocking roadmap initiatives',r:'advisor'}]
+    },
+    handoffs: {
+      2: [{t:'RM → Investment / Portfolio specialist: coordinated meeting prep and client dialogue',r:'central'},{t:'RM → Product and Strategy team: solution positioning support',r:'central'}],
+      4: [{t:'RM → Associates: relationship execution, event and activity support',r:'support'}]
+    },
+    opps: {
+      0: [{t:'Unified org strategy — connect TSF and SFW for pan-Wealth visibility',r:'central'}],
+      3: [{t:'Unblock CRM Analytics — reliable mandate and relationship performance dashboards',r:'central'}],
+      4: [{t:'Governance and expense documentation embedded in normal relationship workflow',r:'advisor'}]
+    }
+  },
+  di_cc: {
+    actions: {
+      0: [{t:'Rapidly verify client identity and account context during inbound contact',r:'advisor'}],
+      1: [{t:'Review client, account and interaction history across channels',r:'advisor'},{t:'Understand the specific reason for contact',r:'advisor'}],
+      2: [{t:'Resolve trading and platform inquiries within role and licensing boundaries',r:'advisor'},{t:'Guide clients on digital adoption and self-service channels',r:'advisor'}],
+      3: [{t:'Escalate unresolved service issues to back-office queues via Case Management',r:'advisor'},{t:'Transfer with full context — clients should not repeat their story',r:'advisor'},{t:'Resource Officer / BRO: frontline support for representatives',r:'support'}],
+      4: [{t:'Document interaction, commitments and follow-up actions',r:'advisor'},{t:'Track outstanding items to completion',r:'advisor'},{t:'WCC Operations: centralized follow-up and back-office activity',r:'central'}]
+    },
+    motiv: {
+      0: [{t:'Recognize the client; demonstrate continuity from prior interactions',r:'advisor'}],
+      1: [{t:'Understand the need before acting — avoid assumptions that slow resolution',r:'advisor'}],
+      2: [{t:'Resolve efficiently; reduce handle time without losing accuracy or compliance',r:'advisor'}],
+      3: [{t:'Protect the client relationship on transfer; escalate with full context',r:'advisor'}],
+      4: [{t:'Support retention and engagement through consistent follow-through',r:'advisor'}]
+    },
+    pain: {
+      0: [{t:'Unfunded Delivery — DI sits on the SFW org but lacks dedicated delivery pod funding; critical enhancement backlog unaddressed',r:'central'}],
+      1: [{t:'Representatives must reconstruct client context from multiple separate records per interaction',r:'advisor'}],
+      3: [{t:'Escalation context lost in transfer — clients repeat their story to the receiving team',r:'advisor'}]
+    },
+    handoffs: {
+      3: [{t:'Investment Rep → Back-office queue: case escalation with full interaction context',r:'central'},{t:'Investment Rep → Specialized team: licensed or complex inquiry transfer',r:'central'}],
+      4: [{t:'Investment Rep → Resource Officer / BRO: frontline support and coaching escalation',r:'support'}]
+    },
+    opps: {
+      0: [{t:'Dedicated delivery pod funding and roadmap prioritization for DI',r:'central'}],
+      1: [{t:'Unified interaction history across all channels at point of contact',r:'central'}],
+      3: [{t:'Portable escalation context — pre-populated case with full prior interaction detail',r:'central'}]
+    }
+  },
+  wops: {
+    actions: {
+      0: [{t:'Receive and triage requests submitted via Salesforce Case Management (replaced legacy Track and Tick)',r:'support'}],
+      1: [{t:'Validate required data and documentation',r:'support'},{t:'Flag incomplete submissions; return deficient requests to originating team',r:'support'}],
+      2: [{t:'Route work to the appropriate team or queue based on request type and priority',r:'central'}],
+      3: [{t:'Process complex back-office tasks — audit statements (7-year pulls), RESP tax/grant calculations',r:'support'},{t:'Execute eligible straight-through processing',r:'central'}],
+      4: [{t:'Manage exceptions, returned work and deficiencies back to originating advisors',r:'support'},{t:'Track resolution and communicate status to front office',r:'support'}],
+      5: [{t:'Complete work and confirm closure',r:'support'},{t:'Support auditability, retention and operational controls',r:'central'}]
+    },
+    motiv: {
+      0: [{t:'Reduce operational risk — minimize manual workarounds and end-user computing (EUCs)',r:'support'}],
+      1: [{t:'Improve intake quality — receive complete, actionable requests first time',r:'support'}],
+      2: [{t:'Improve throughput — move work through queues without avoidable delay',r:'support'}],
+      3: [{t:'Expand automation — move eligible work toward straight-through processing',r:'central'}],
+      4: [{t:'Increase transparency — ownership, status and exception reasons visible to all teams',r:'support'}],
+      5: [{t:'Support compliance — maintain full auditability and audit trail',r:'central'}]
+    },
+    pain: {
+      1: [{t:'Incomplete Intake Quality — errors and missing data from front-office cause rework loops and back-and-forth email chains',r:'support'}],
+      3: [{t:'Legacy Systems Integration — handoffs across fragmented books of record (WCM, SEI, FileNet) require manual L3 support',r:'central'}]
+    },
+    handoffs: {
+      0: [{t:'FP / CSA → Wealth Ops: structured digital intake via Salesforce Case Management',r:'support'}],
+      4: [{t:'Wealth Ops → FP / CSA: returned work with clear deficiency notes and remediation path',r:'support'}],
+      5: [{t:'Wealth Ops → Downstream system: completed processing confirmation and audit record',r:'central'}]
+    },
+    opps: {
+      1: [{t:'Structured digital intake with front-end validations — prevent incomplete submissions before they reach Ops',r:'central'}],
+      4: [{t:'Designed returned-work workflow — replace informal email loops with structured exception path',r:'support'}],
+      5: [{t:'Operational dashboards: workload, aging, turnaround and outcome visibility for Ops leaders',r:'central'}]
+    }
+  }
+};
+
+var PERSONA_SEED = {
+  fp: {
+    0: { // Financial Planner
+      job:     ['Help clients achieve financial confidence through holistic planning','Manage and grow a scalable advice practice'],
+      exp:     ['Complete, current view of household, goals, commitments and next actions','Proactive prompts for reviews and life events'],
+      rel:     ['Client — discovery, goal setting, plan development, reviews','Retail & Wealth referral partners — qualified inbound opportunities','Regional leader — coaching, pipeline discipline, practice effectiveness'],
+      support: ['CSA / CRA / BO: appointment prep, outreach, documentation, onboarding coordination','Centralized FPA: standardized admin, transaction support, prospecting'],
+      day:     ['High administrative burden reduces time available for advice','Fragmented client context across systems','Manual referral tracking and follow-up'],
+      client:  ['Mass affluent and HNW households seeking holistic financial plans','Clients with complex life goals: retirement, estate, education, insurance']
+    },
+    1: { // CSA / CRA / BO
+      job:     ['Extend planner capacity — handle non-advice, servicing and admin work','Coordinate onboarding, documentation and follow-up'],
+      exp:     ['Shared task visibility with the planner','Clear ownership of in-flight work items'],
+      rel:     ['Financial Planner — primary work requestor','Clients — secondary contact for inquiries and scheduling'],
+      support: ['Centralized FPA team for overflow or standardized processing'],
+      day:     ['Work arrives informally (email / phone) with missing context','No consistent queue or status tracking'],
+      client:  ['Same household base as the Financial Planner']
+    }
+  },
+  pb: {
+    0: { // Private Banker
+      job:     ['Deliver personalized banking, credit and liquidity solutions for HNW/UHNW clients','Acquire, retain and deepen affluent relationships'],
+      exp:     ['Shared HNW household, relationship and partner context','Premium-service continuity during absence or peak demand'],
+      rel:     ['Client — discovery, banking/credit advice, relationship reviews','Credit partners — RCM, Credit Analyst, Credit Solutions Group','Market leadership — coaching, approvals, risk oversight'],
+      support: ['PCSA: onboarding, transactions, documentation, client follow-up','PB Centralized Support: national onboarding, account programming, eSign, document storage'],
+      day:     ['Complex credit coordination across multiple internal teams','Onboarding documentation is manual and error-prone','Premium clients expect fast response; admin slows the banker down'],
+      client:  ['HNW and UHNW clients with complex banking, lending and liquidity needs']
+    },
+    1: { // PCSA
+      job:     ['Support end-to-end onboarding and account documentation','Complete transactions, service requests and client follow-up'],
+      exp:     ['Task-based workflow with clear status and priority','Shared visibility with the Private Banker'],
+      rel:     ['Private Banker — primary partner','Centralized PB Support — escalation and overflow'],
+      support: ['PB Centralized Support Team for national onboarding scope'],
+      day:     ['Deficient onboarding requests require rework loops','No structured handoff visibility between PCSA and centralized team'],
+      client:  ['Same HNW/UHNW client base as the Private Banker']
+    }
+  },
+  pia: {
+    0: { // Investment Advisor
+      job:     ['Understand client household, goals and risk profile','Manage portfolios, conduct reviews, identify growth and referral opportunities','Coordinate Wealth and One TD specialists'],
+      exp:     ['Consolidated household and relationship view','Portfolio-review preparation and proactive engagement prompts','Business planning, pipeline and coaching dashboards'],
+      rel:     ['Client — discovery, investment advice, portfolio reviews, relationship deepening','Branch / regional leadership — coaching, practice management','Wealth specialists and referral partners'],
+      support: ['AIA: secondary client contact, transactions, documentation, opportunity ID','Client Service Support: routine service, documents, continuity during absence','Centralized Client Service: standardized admin across advisory practices'],
+      day:     ['Swivel-chair activity across fragmented tools','Insufficient time for client-facing work due to admin','Pipeline and review tracking is inconsistent'],
+      client:  ['Mass affluent to HNW households; investment relationship as the primary anchor']
+    },
+    1: { // Associate Investment Advisor
+      job:     ['Secondary relationship contact — respond to client inquiries','Execute delegated transactions; prepare documentation'],
+      exp:     ['Shared account team visibility with the IA','Clear task ownership and interaction history'],
+      rel:     ['Investment Advisor — primary partner','Clients — authorized secondary contact'],
+      support: ['Centralized Client Service for overflow processing'],
+      day:     ['Unclear task hand-off from IA','Duplicate data entry across systems'],
+      client:  ['Same household base as the Investment Advisor']
+    }
+  },
+  tdam_r: {
+    0: {
+      job:     ['Grow net assets and advisor engagement across Retail channels','Plan and execute territory coverage; identify and progress sales opportunities','Manage campaigns, events and follow-up activities'],
+      exp:     ['Actionable advisor 360 with trustworthy relationship and business context','Prioritized advisor actions with reason for each','Reduced pre-call preparation effort'],
+      rel:     ['Financial advisors / dealers — primary intermediary relationship','Sales leaders and territory partners','Marketing, Analytics, Sales Enablement and National Office'],
+      support: ['BDA: sales execution and follow-up','Marketing: campaigns, webinars, outreach','Analytics and Insights: sales intelligence and prioritization'],
+      day:     ['Fragmented advisor data across systems','No reliable view of advisor engagement or product penetration','Pre-call prep is time-consuming and inconsistent'],
+      client:  ['Financial advisors, dealers and channels — not end investors directly']
+    }
+  },
+  tdam_i: {
+    0: {
+      job:     ['Manage relationships with institutional clients, prospects and consultants','Coordinate investment, portfolio and product expertise','Identify, progress and document institutional opportunities'],
+      exp:     ['Reliable institutional relationship and stakeholder view','Team-based coverage with clear accountable RM visibility','Governance and expense documentation embedded in normal workflow'],
+      rel:     ['Institutional clients — pension plans, foundations, endowments, corporations','Prospects and consultants','Investment specialists, portfolio managers','Compliance and governance partners'],
+      support: ['Associates: regional support for relationship execution','Product and Strategy: solution positioning','Compliance: institutional sales practices oversight'],
+      day:     ['Stakeholder maps and mandate context are hard to maintain in a generic CRM','Compliance documentation is a manual add-on, not embedded in workflow','Institutional data quality is inconsistent'],
+      client:  ['Institutional investors — pensions, endowments, foundations, corporations']
+    }
+  },
+  di_cc: {
+    0: {
+      job:     ['Identify the client and understand the reason for contact','Review client, account and interaction context; resolve or escalate','Document interactions, commitments and follow-up'],
+      exp:     ['Rapid client and account-context retrieval','Consolidated interaction history across channels','Make escalation context portable — clients should not repeat their story'],
+      rel:     ['Client — primary relationship at contact-centre scale','Resource Officers / BROs — frontline support','Team and Capability Managers — oversight and coaching','Downstream specialized teams — escalation recipients'],
+      support: ['Resource and Business Resource Officers for representative support','WCC Operations for centralized activity'],
+      day:     ['Representatives reconstruct context from multiple records per interaction','Role and licensing boundaries not enforced in tool experience','Escalations lose context in transfer'],
+      client:  ['Direct Investing retail clients — self-directed investors across inbound, outbound and digital channels']
+    }
+  },
+  wops: {
+    0: {
+      job:     ['Receive, triage and validate operational requests from frontline teams','Route, process and close work; manage exceptions and deficiencies'],
+      exp:     ['Structured digital intake with relevant validations','Queue-based routing, assignment, priority and status visibility','Do not force Operations to reconstruct client context already captured upstream'],
+      rel:     ['Financial Planners and CSAs — primary requestors','New Accounts and BI&T processing teams','Salesforce WCM platform — strategic case system','Operational leaders — queue health and turnaround visibility'],
+      support: ['Digital-worker and integration components for straight-through processing','FileNet and data-load infrastructure'],
+      day:     ['Incomplete submissions require repeated back-and-forth with frontline','Returned work travels informally via email, not structured workflow','No consistent status visibility for the originating team'],
+      client:  ['Internal — serves frontline Wealth colleagues, not end clients directly']
+    }
+  }
+};
+
+function seedData() {
+  LOBS.forEach(function(lob) {
+    // Personas
+    var personasForLob = PERSONA_SEED[lob.id];
+    if (personasForLob) {
+      Object.keys(personasForLob).forEach(function(piStr) {
+        var pi = parseInt(piStr);
+        var quadData = personasForLob[pi];
+        PQ_QUADS.forEach(function(q) {
+          var existing = loadData(skey('persona', lob.id, pi + '-' + q.id), null);
+          if (existing !== null && existing.length > 0) return; // don't overwrite user edits
+          var texts = quadData[q.id];
+          if (!texts || !texts.length) return;
+          var role = (lob.roles && lob.roles[pi]) || 'advisor';
+          var noteColor = ROLE_COLORS[role] || COLORS[0];
+          var notes = texts.map(function(t, i) {
+            return { id: 'seed-' + lob.id + '-' + pi + '-' + q.id + '-' + i, color: noteColor, text: t };
+          });
+          saveData(skey('persona', lob.id, pi + '-' + q.id), notes);
+        });
+      });
+    }
+
+    // Blueprint phases + cells
+    var existingBp = loadData(skey('blueprint', lob.id), null);
+    var needsPhases = !existingBp || !existingBp.phases || existingBp.phases.every(function(p){ return !p || p.startsWith('Phase '); });
+    var phases = needsPhases ? (DEFAULT_PHASES[lob.id] || ['Phase 1','Phase 2','Phase 3']) : existingBp.phases;
+    var cells = (existingBp && existingBp.cells) ? existingBp.cells : {};
+
+    // Seed blueprint cells if empty
+    var lobBpSeed = BLUEPRINT_SEED[lob.id];
+    if (lobBpSeed) {
+      BP_ROWS.forEach(function(row) {
+        var rowSeed = lobBpSeed[row.id];
+        if (!rowSeed) return;
+        Object.keys(rowSeed).forEach(function(piStr) {
+          var pi = parseInt(piStr);
+          var cellKey = row.id + '_' + pi;
+          if (cells[cellKey] && cells[cellKey].length > 0) return; // don't overwrite
+          var texts = rowSeed[pi];
+          if (!texts || !texts.length) return;
+          cells[cellKey] = texts.map(function(note, i) {
+            var color = note.r ? (ROLE_COLORS[note.r] || COLORS[0]) : COLORS[i % COLORS.length];
+            return { id: 'bseed-' + lob.id + '-' + row.id + '-' + pi + '-' + i, color: color, text: note.t || note };
+          });
+        });
+      });
+    }
+
+    saveData(skey('blueprint', lob.id), { phases: phases, cells: cells });
+  });
+}
+
+/* ── INIT ─────────────────────────────────────────────────── */
+function init() {
+  seedData();
+  buildLobTabs();
+  var content = document.getElementById('content');
+  LOBS.forEach(function(lob) {
+    content.appendChild(buildPersonaPanel(lob));
+    content.appendChild(buildBlueprintPanel(lob));
+  });
+  // grids must render after panels are in the DOM
+  LOBS.forEach(function(lob) {
+    renderGrid(lob.id, lobSwatches[lob.id]);
+  });
+  showPanel(activeMain, activeLob);
+}
+
+init();
+</script>
+</body>
+</html>
